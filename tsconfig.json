@@ -13,13 +13,14 @@
 
 {
   "compilerOptions": {
-    "module": "ESNext",
-    "target": "ES6",
-    "moduleResolution": "Node",
-    "strict": true,
+    "rootDirs": ["src" ,"custom-types.d.ts"],
+    "outDir": "dist",
+    "lib": ["es2020"],
+    "target": "es2020",
+    "module": "Node16",
+    "moduleResolution": "Node16",
     "esModuleInterop": true,
-    "outDir": "./dist",
-    "rootDir": "./src",
-    "skipLibCheck": true
-  }
+    "types": ["node"]
+  },
+  "include": ["src"]
 }

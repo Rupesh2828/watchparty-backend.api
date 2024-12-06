@@ -4,11 +4,11 @@
   "description": "",
   "main": "server.js",
   "type": "module",
-  "scripts": {
-    "dev": "concurrently \"tsc -w\" \"nodemon dist/server.js\"",
-    "start": "node dist/server.js",
-    "build": "tsc"
-  },
+"scripts": {
+  "dev": "concurrently \"tsc -w\" \"nodemon dist/server.js\"",
+  "start": "node dist/server.js",
+  "build": "tsc"
+},
   "keywords": [],
   "author": "",
   "license": "ISC",
