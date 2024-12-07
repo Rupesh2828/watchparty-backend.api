@@ -21,6 +21,7 @@ model User {
   avatar       String?
   createdAt    DateTime     @default(now())
   updatedAt    DateTime?     @updatedAt
+  refreshToken String?
   participants WatchParty[] @relation("Participants")
   watchParties WatchParty[]
 }

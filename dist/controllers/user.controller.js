@@ -1,4 +1,5 @@
 import prisma from '../config/database.js'; // Assuming prisma is set up
+import { hashPassword } from '../utls/bcrypt.js';
 export const createUser = async (req, res) => {
     try {
         const { username, email, password } = req.body;
@@ -16,12 +17,20 @@ export const createUser = async (req, res) => {
             res.status(409).json({ error: 'User already exists' });
             return;
         }
+        const hashedPassword = await hashPassword(password);
         // Create a new user
         const newUser = await prisma.user.create({
             data: {
                 username,
                 email,
-                password,
+                password: hashedPassword,
+            },
+            select: {
+                id: true,
+                username: true,
+                email: true,
+                createdAt: true,
+                updatedAt: true,
             },
         });
         res.status(201).json({ message: 'User created successfully', user: newUser });

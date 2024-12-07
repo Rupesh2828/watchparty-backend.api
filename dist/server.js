@@ -1,5 +1,6 @@
 import express from "express";
 import cors from "cors";
+import cookieParser from "cookie-parser";
 import dotenv from "dotenv";
 import { PrismaClient } from "@prisma/client";
 // Load environment variables from .env file
@@ -15,6 +16,7 @@ app.use(cors({
 }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true, limit: "20kb" }));
+app.use(cookieParser());
 // Routes import
 import userRouter from "./routes/user.route.js";
 // Routes Declaration
