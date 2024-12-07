@@ -1,4 +1,4 @@
-import bcrypt from "bcrypt";
+import bcrypt from 'bcrypt';
 
 // Hash password before saving to the database
 export const hashPassword = async (password: string): Promise<string> => {

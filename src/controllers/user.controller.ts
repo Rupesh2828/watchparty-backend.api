@@ -1,8 +1,8 @@
 // controllers/user.controller.ts
 import { Request, Response } from 'express';
 import prisma from '../config/database.js';  // Assuming prisma is set up
-import { hashPassword } from '../utls/bcrypt.js';
-import { isPasswordCorrect } from '../utls/bcrypt.js';
+import { hashPassword } from '../utls/hash.js';
+import { isPasswordCorrect } from '../utls/hash.js';
 import { generateAccessToken, generateRefreshToken } from '../utls/jwt.js';
 import jwt from "jsonwebtoken";
 
@@ -82,6 +82,7 @@ export const createUser = async (req: Request, res: Response): Promise<void> => 
         id: true,
         username: true,
         email: true,
+        password: true,
         createdAt: true,
         updatedAt: true,
       },
@@ -106,7 +107,7 @@ export const loginUser = async (req: Request, res: Response): Promise<void> => {
   }
 
   const existingUser = await prisma.user.findUnique({
-    where: { email: "" },
+    where: { email},
   })
 
   if (!existingUser) {
