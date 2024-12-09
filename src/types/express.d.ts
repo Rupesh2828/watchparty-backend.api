@@ -1,4 +1,3 @@
-// src/types/express.d.ts or your preferred location
 import { Request } from 'express';
 
 declare global {

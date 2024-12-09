@@ -19,8 +19,10 @@ app.use(express.urlencoded({ extended: true, limit: "20kb" }));
 app.use(cookieParser());
 // Routes import
 import userRouter from "./routes/user.route.js";
+import watchpartyRouter from "./routes/watchparty.route.js";
 // Routes Declaration
 app.use("/api/users", userRouter);
+app.use("/api/watchparty", watchpartyRouter);
 // Start the server
 async function startServer() {
     try {

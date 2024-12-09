@@ -3,50 +3,64 @@ import { Request, Response, NextFunction } from "express";
 
 export const authenticate = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
-    // Log tokens for debugging
-    console.log("Authorization Header:", req.headers['authorization']);
-    console.log("Refresh Token from Cookies:", req.cookies['accessToken']);
-
-    // Extract tokens from headers and cookies
-    // const accessToken = req.headers['authorization']?.split(' ')[1]; // Bearer token
     const accessToken = req.cookies['accessToken'];
+    const refreshToken = req.cookies['refreshToken'];
 
-    // If neither token is present, deny access
-    if (!accessToken && !accessToken) {
-      res.status(401).json({ message: 'Access Denied. No token provided.' });
+    // console.log("Access Token:", accessToken);
+    // console.log("Refresh Token:", refreshToken);
+
+    if (!accessToken && !refreshToken) {
+      res.status(401).json({ message: "Access Denied. No token provided." });
       return;
     }
 
-    if (accessToken) {
-      // Verify refresh token if it's present
-      const decodedRefresh = jwt.verify(accessToken, process.env.SECRET_KEY) as { user: string };
+    try {
+      // Verify the access token
+      const decodedAccess = jwt.verify(accessToken, process.env.ACCESS_TOKEN_SECRET) as { userId: number, email: string };
+      // console.log("Access Token Decoded:", decodedAccess);
 
-      // Generate new access token from the decoded refresh token
-      const newAccessToken = jwt.sign({ user: decodedRefresh.user }, process.env.SECRET_KEY, { expiresIn: '1h' });
+      // Attach the user to the request object
+      (req as any).user = decodedAccess;
+      return next();
+    } catch (accessError) {
+      console.warn("Access Token Verification Failed:", accessError.message);
 
-      console.log("Secret Key:", process.env.SECRET_KEY);
-      console.log("Received Token:", accessToken);
+      // If access token fails, verify refresh token
+    //   if (refreshToken) {
+    //     try {
+    //       const decodedRefresh = jwt.verify(refreshToken, process.env.REFRESH_TOKEN_SECRET) as { userId: number };
+    //       console.log("Refresh Token Decoded:", decodedRefresh);
 
+    //       // Generate a new access token
+    //       const newAccessToken = jwt.sign(
+    //         { userId: decodedRefresh.userId },
+    //         process.env.ACCESS_TOKEN_SECRET,
+    //         { expiresIn: "15m" }
+    //       );
 
-      // Set the new access token in headers and refresh token in cookies
-      res
-        .cookie('accessToken', accessToken, {
-          httpOnly: true,
-          sameSite: 'strict' as const,
-          secure: process.env.NODE_ENV === 'production',
-          maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
-        })
-        .header('Authorization', `Bearer ${newAccessToken}`);
+    //       console.log("New Access Token Generated");
 
-      // Attach the user to the request object (if decodedRefresh is found)
-      (req as any).user = decodedRefresh?.user;
+    //       // Set the new access token in cookies
+    //       res.cookie("accessToken", newAccessToken, {
+    //         httpOnly: true,
+    //         secure: process.env.NODE_ENV === "production",
+    //         sameSite: "strict",
+    //         maxAge: 15 * 60 * 1000, // 15 minutes
+    //       });
+
+    //       // Attach the user to the request object
+    //       (req as any).user = decodedRefresh;
+    //       return next();
+    //     } catch (refreshError) {
+    //       console.error("Refresh Token Verification Failed:", refreshError.message);
+    //     }
+    //   }
     }
 
-    next();
-
+    // If both tokens fail, deny access
+    res.status(401).json({ message: "Invalid or expired tokens." });
   } catch (error) {
-    console.error("Error in authentication:", error);
-    res.status(400).json({ message: 'Invalid Token.' });
+    console.error("Authentication Error:", error.message);
+    res.status(500).json({ message: "Internal Server Error." });
   }
 };
-

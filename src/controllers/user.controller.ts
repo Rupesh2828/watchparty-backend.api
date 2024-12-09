@@ -30,6 +30,10 @@ export const generateAccessAndRefreshToken = async (userId: number) => {
       { expiresIn: '15d' }
     );
 
+    // console.log("ACCESS_TOKEN_SECRET:", process.env.ACCESS_TOKEN_SECRET);
+    // console.log("REFRESH_TOKEN_SECRET:", process.env.REFRESH_TOKEN_SECRET);
+
+
     // Optionally, you can store the refresh token in the database
     user.refreshToken = refreshToken;
     await prisma.user.update({
@@ -153,7 +157,7 @@ export const loginUser = async (req: Request, res: Response): Promise<void> => {
 export const logoutUser = async (req: Request, res: Response): Promise<void> => {
   try {
 
-    const userId  = req.user?.id;
+    const userId = req.user?.id || req.body.userId;
 
     if (!userId) {
       res.status(400).json({ message: "User ID is required to logout." });
@@ -175,16 +179,18 @@ export const logoutUser = async (req: Request, res: Response): Promise<void> => 
       data: { refreshToken: null },
     })
 
-    const options = {
-      //by this cookies can only be modifyble in server not on front-end end
+
+    // Clear cookies
+    res.clearCookie("accessToken", {
       httpOnly: true,
       secure: true,
-    };
+    });
+    res.clearCookie("refreshToken", {
+      httpOnly: true,
+      secure: true,
+    });
 
-    res.status(200)
-      .clearCookie('accessToken', options)
-      .clearCookie('refreshToken', options)
-      .json({ user: {}, message: "Logged out successfully." });
+    res.status(200).json({ user: {}, message: "Logged out successfully." });
 
 
   } catch (error) {

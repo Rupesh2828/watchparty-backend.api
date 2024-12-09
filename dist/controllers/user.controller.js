@@ -15,6 +15,8 @@ export const generateAccessAndRefreshToken = async (userId) => {
         // Generate Access and Refresh Tokens
         const accessToken = jwt.sign({ userId: user.id, email: user.email }, process.env.ACCESS_TOKEN_SECRET, { expiresIn: '15m' });
         const refreshToken = jwt.sign({ userId: user.id }, process.env.REFRESH_TOKEN_SECRET, { expiresIn: '15d' });
+        // console.log("ACCESS_TOKEN_SECRET:", process.env.ACCESS_TOKEN_SECRET);
+        // console.log("REFRESH_TOKEN_SECRET:", process.env.REFRESH_TOKEN_SECRET);
         // Optionally, you can store the refresh token in the database
         user.refreshToken = refreshToken;
         await prisma.user.update({
@@ -111,7 +113,7 @@ export const loginUser = async (req, res) => {
 };
 export const logoutUser = async (req, res) => {
     try {
-        const userId = req.user?.id;
+        const userId = req.user?.id || req.body.userId;
         if (!userId) {
             res.status(400).json({ message: "User ID is required to logout." });
             return;
@@ -128,15 +130,16 @@ export const logoutUser = async (req, res) => {
             where: { id: userId },
             data: { refreshToken: null },
         });
-        const options = {
-            //by this cookies can only be modifyble in server not on front-end end
+        // Clear cookies
+        res.clearCookie("accessToken", {
             httpOnly: true,
             secure: true,
-        };
-        res.status(200)
-            .clearCookie('accessToken', options)
-            .clearCookie('refreshToken', options)
-            .json({ user: {}, message: "Logged out successfully." });
+        });
+        res.clearCookie("refreshToken", {
+            httpOnly: true,
+            secure: true,
+        });
+        res.status(200).json({ user: {}, message: "Logged out successfully." });
     }
     catch (error) {
         console.error("Error logging out:", error);
