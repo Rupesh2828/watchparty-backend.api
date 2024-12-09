@@ -3,7 +3,7 @@ import { Request, Response } from 'express';
 import prisma from '../config/database.js';  // Assuming prisma is set up
 import { hashPassword } from '../utls/hash.js';
 import { isPasswordCorrect } from '../utls/hash.js';
-import { generateAccessToken, generateRefreshToken } from '../utls/jwt.js';
+// import { generateAccessToken, generateRefreshToken } from '../utls/jwt.js';
 import jwt from "jsonwebtoken";
 
 export const generateAccessAndRefreshToken = async (userId: number) => {
@@ -49,8 +49,6 @@ export const createUser = async (req: Request, res: Response): Promise<void> => 
   try {
     const { username, email, password } = req.body;
     console.log("Username:", username);
-
-    console.log(req.body);
 
 
     if (!email || !password || !username) {
@@ -107,7 +105,7 @@ export const loginUser = async (req: Request, res: Response): Promise<void> => {
   }
 
   const existingUser = await prisma.user.findUnique({
-    where: { email},
+    where: { email },
   })
 
   if (!existingUser) {
@@ -122,29 +120,78 @@ export const loginUser = async (req: Request, res: Response): Promise<void> => {
     return
   }
 
-  if (!isPasswordValid) {
-    res.status(401).json({ message: "Incorrect password" });
-    return;
-  }
-
-  const { accessToken, refreshToken } = await generateAccessAndRefreshToken(
-    existingUser.id
-  );
-
 
   try {
     // Generate access and refresh tokens
     const { accessToken, refreshToken } = await generateAccessAndRefreshToken(existingUser.id);
 
+    //sending tokens via cookies
+
+    // Cookie options
+    const cookieOptions = {
+      httpOnly: true, // Cookies cannot be accessed by JavaScript on the client
+      secure: process.env.NODE_ENV === "production", // Send cookies only over HTTPS in production
+      sameSite: "strict" as const, // Helps prevent CSRF attacks
+      maxAge: 24 * 60 * 60 * 1000, // 1 day
+    };
+
+    // Set cookies for access and refresh tokens
+    res.cookie("accessToken", accessToken, cookieOptions);
+    res.cookie("refreshToken", refreshToken, cookieOptions);
+
     // Send the tokens in the response
     res.status(200).json({
       message: "Login successful",
-      accessToken,
-      refreshToken,
     });
 
   } catch (error) {
     res.status(500).json({ message: `Error generating tokens: ${error.message}` });
+  }
+
+}
+
+export const logoutUser = async (req: Request, res: Response): Promise<void> => {
+  try {
+
+    const userId  = req.user?.id;
+
+    if (!userId) {
+      res.status(400).json({ message: "User ID is required to logout." });
+      return;
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { id: userId },  
+    })
+
+    if (!user) {
+      res.status(404).json({ message: "User not found." });
+      return;
+    }
+
+    //clear the refreshtoken from user
+    await prisma.user.update({
+      where: { id: userId },
+      data: { refreshToken: null },
+    })
+
+    const options = {
+      //by this cookies can only be modifyble in server not on front-end end
+      httpOnly: true,
+      secure: true,
+    };
+
+    res.status(200)
+      .clearCookie('accessToken', options)
+      .clearCookie('refreshToken', options)
+      .json({ user: {}, message: "Logged out successfully." });
+
+
+  } catch (error) {
+
+    console.error("Error logging out:", error);
+    res.status(500).json({ message: "Internal Server Error" });
+
   }
 
 }
