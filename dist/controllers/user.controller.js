@@ -1,7 +1,5 @@
 import prisma from '../config/database.js'; // Assuming prisma is set up
-import { hashPassword } from '../utls/hash.js';
-import { isPasswordCorrect } from '../utls/hash.js';
-// import { generateAccessToken, generateRefreshToken } from '../utls/jwt.js';
+import { hashPassword, isPasswordCorrect } from '../utils/hash.js';
 import jwt from "jsonwebtoken";
 export const generateAccessAndRefreshToken = async (userId) => {
     try {
@@ -36,7 +34,6 @@ export const createUser = async (req, res) => {
         console.log("Username:", username);
         if (!email || !password || !username) {
             res.status(400).json({ error: 'Username,Email and password are required' });
-            return;
         }
         // Check if the user already exists
         const existingUser = await prisma.user.findUnique({
@@ -44,7 +41,6 @@ export const createUser = async (req, res) => {
         });
         if (existingUser) {
             res.status(409).json({ error: 'User already exists' });
-            return;
         }
         const hashedPassword = await hashPassword(password);
         // Create a new user
@@ -74,19 +70,16 @@ export const loginUser = async (req, res) => {
     const { email, password } = req.body;
     if (!email || !password) {
         res.status(400).json({ message: "Email and Password is required !!" });
-        return;
     }
     const existingUser = await prisma.user.findUnique({
         where: { email },
     });
     if (!existingUser) {
         res.status(400).json({ message: "User not found" });
-        return;
     }
     const isPasswordValid = await isPasswordCorrect(password, existingUser.password);
     if (!isPasswordValid) {
         res.status(401).json({ message: "Incorrect password" });
-        return;
     }
     try {
         // Generate access and refresh tokens
@@ -105,6 +98,7 @@ export const loginUser = async (req, res) => {
         // Send the tokens in the response
         res.status(200).json({
             message: "Login successful",
+            existingUser
         });
     }
     catch (error) {
@@ -116,14 +110,12 @@ export const logoutUser = async (req, res) => {
         const userId = req.user?.id || req.body.userId;
         if (!userId) {
             res.status(400).json({ message: "User ID is required to logout." });
-            return;
         }
         const user = await prisma.user.findUnique({
             where: { id: userId },
         });
         if (!user) {
             res.status(404).json({ message: "User not found." });
-            return;
         }
         //clear the refreshtoken from user
         await prisma.user.update({
@@ -139,7 +131,7 @@ export const logoutUser = async (req, res) => {
             httpOnly: true,
             secure: true,
         });
-        res.status(200).json({ user: {}, message: "Logged out successfully." });
+        res.status(200).json({ message: "Logged out successfully." });
     }
     catch (error) {
         console.error("Error logging out:", error);

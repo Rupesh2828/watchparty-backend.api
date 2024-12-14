@@ -1,9 +1,7 @@
-// controllers/user.controller.ts
+
 import { Request, Response } from 'express';
 import prisma from '../config/database.js';  // Assuming prisma is set up
-import { hashPassword } from '../utls/hash.js';
-import { isPasswordCorrect } from '../utls/hash.js';
-// import { generateAccessToken, generateRefreshToken } from '../utls/jwt.js';
+import { hashPassword ,isPasswordCorrect} from '../utils/hash.js';
 import jwt from "jsonwebtoken";
 
 export const generateAccessAndRefreshToken = async (userId: number) => {
@@ -57,7 +55,7 @@ export const createUser = async (req: Request, res: Response): Promise<void> => 
 
     if (!email || !password || !username) {
       res.status(400).json({ error: 'Username,Email and password are required' });
-      return;
+      
 
     }
 
@@ -68,7 +66,7 @@ export const createUser = async (req: Request, res: Response): Promise<void> => 
 
     if (existingUser) {
       res.status(409).json({ error: 'User already exists' });
-      return;
+      
     }
 
     const hashedPassword = await hashPassword(password)
@@ -104,7 +102,7 @@ export const loginUser = async (req: Request, res: Response): Promise<void> => {
 
   if (!email || !password) {
     res.status(400).json({ message: "Email and Password is required !!" })
-    return
+    
 
   }
 
@@ -114,14 +112,14 @@ export const loginUser = async (req: Request, res: Response): Promise<void> => {
 
   if (!existingUser) {
     res.status(400).json({ message: "User not found" })
-    return
+    
   }
 
   const isPasswordValid = await isPasswordCorrect(password, existingUser.password)
 
   if (!isPasswordValid) {
     res.status(401).json({ message: "Incorrect password" });
-    return
+    
   }
 
 
@@ -146,6 +144,7 @@ export const loginUser = async (req: Request, res: Response): Promise<void> => {
     // Send the tokens in the response
     res.status(200).json({
       message: "Login successful",
+      existingUser
     });
 
   } catch (error) {
@@ -161,7 +160,7 @@ export const logoutUser = async (req: Request, res: Response): Promise<void> => 
 
     if (!userId) {
       res.status(400).json({ message: "User ID is required to logout." });
-      return;
+      
     }
 
     const user = await prisma.user.findUnique({
@@ -170,7 +169,6 @@ export const logoutUser = async (req: Request, res: Response): Promise<void> => 
 
     if (!user) {
       res.status(404).json({ message: "User not found." });
-      return;
     }
 
     //clear the refreshtoken from user
@@ -190,7 +188,7 @@ export const logoutUser = async (req: Request, res: Response): Promise<void> => 
       secure: true,
     });
 
-    res.status(200).json({ user: {}, message: "Logged out successfully." });
+    res.status(200).json({ message: "Logged out successfully." });
 
 
   } catch (error) {
