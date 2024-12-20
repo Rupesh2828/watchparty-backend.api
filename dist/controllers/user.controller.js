@@ -1,4 +1,4 @@
-import prisma from '../config/database.js'; // Assuming prisma is set up
+import prisma from '../config/database.js';
 import { hashPassword, isPasswordCorrect } from '../utils/hash.js';
 import jwt from "jsonwebtoken";
 export const generateAccessAndRefreshToken = async (userId) => {
