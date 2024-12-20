@@ -8,8 +8,8 @@ export const createWatchParty = async(req:Request, res:Response): Promise<void> 
       const {title, description, hostId, videoUrl, startTime, endTime} = req.body;
       
   
-      if (!title || !description || !hostId) {
-          res.status(401).json({message: "Title, Description and Host are required !!"})
+      if (!title || !description || !hostId ||!videoUrl) {
+          res.status(401).json({message: "Title, Description, Host and Video URL are required !!"})
           
       }
   
@@ -36,7 +36,7 @@ export const createWatchParty = async(req:Request, res:Response): Promise<void> 
           res.status(401).json({message: "Watchparty creation failed !!"})
       }
   
-      res.status(201).json({ message: 'watchparty created successfully',watchpartyCreation});
+      res.status(201).json({ message: 'Watchparty created successfully',watchpartyCreation});
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: 'Internal Server Error' });
