@@ -102,3 +102,27 @@ export const updateWatchpartyDetails = async (req, res) => {
         res.status(500).json({ error: "Internal Server Error" });
     }
 };
+export const deleteWatchparty = async (req, res) => {
+    try {
+        const { id } = req.params;
+        if (!id || isNaN(Number(id))) {
+            res.status(400).json({ message: "Valid Watch Party ID is required." });
+            return;
+        }
+        //if id of specific watchparty is found. then proceed to delete it.
+        const deletedWatchparty = await prisma.watchParty.delete({
+            where: {
+                id: parseInt(id),
+            },
+        });
+        if (!deleteWatchparty) {
+            res.status(400).json({ message: "Unable to delete watchparty." });
+            return;
+        }
+        res.status(200).json({ message: "WatchParty deleted successfully.", deletedWatchparty: {} });
+    }
+    catch (error) {
+        console.error("Error deleting watch party:", error);
+        res.status(500).json({ error: "Internal Server Error" });
+    }
+};

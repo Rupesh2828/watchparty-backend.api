@@ -22,7 +22,7 @@ import userRouter from "./routes/user.route.js";
 import watchpartyRouter from "./routes/watchparty.route.js";
 // Routes Declaration
 app.use("/api/users", userRouter);
-app.use("/api/watchparty", watchpartyRouter);
+app.use("/api/watchparties", watchpartyRouter);
 // Start the server
 async function startServer() {
     try {
