@@ -15,9 +15,8 @@ export const authenticate = async (req: Request, res: Response, next: NextFuncti
     }
 
     try {
-      // Verify the access token
+      // Verify the access token and sending object of userid and email via  req.user
       const decodedAccess = jwt.verify(accessToken, process.env.ACCESS_TOKEN_SECRET) as { userId: number, email: string };
-      // console.log("Access Token Decoded:", decodedAccess);
 
       // Attach the user to the request object
       (req as any).user = decodedAccess;
@@ -25,36 +24,7 @@ export const authenticate = async (req: Request, res: Response, next: NextFuncti
     } catch (accessError) {
       console.warn("Access Token Verification Failed:", accessError.message);
 
-      // If access token fails, verify refresh token
-    //   if (refreshToken) {
-    //     try {
-    //       const decodedRefresh = jwt.verify(refreshToken, process.env.REFRESH_TOKEN_SECRET) as { userId: number };
-    //       console.log("Refresh Token Decoded:", decodedRefresh);
-
-    //       // Generate a new access token
-    //       const newAccessToken = jwt.sign(
-    //         { userId: decodedRefresh.userId },
-    //         process.env.ACCESS_TOKEN_SECRET,
-    //         { expiresIn: "15m" }
-    //       );
-
-    //       console.log("New Access Token Generated");
-
-    //       // Set the new access token in cookies
-    //       res.cookie("accessToken", newAccessToken, {
-    //         httpOnly: true,
-    //         secure: process.env.NODE_ENV === "production",
-    //         sameSite: "strict",
-    //         maxAge: 15 * 60 * 1000, // 15 minutes
-    //       });
-
-    //       // Attach the user to the request object
-    //       (req as any).user = decodedRefresh;
-    //       return next();
-    //     } catch (refreshError) {
-    //       console.error("Refresh Token Verification Failed:", refreshError.message);
-    //     }
-    //   }
+   
     }
 
     // If both tokens fail, deny access
