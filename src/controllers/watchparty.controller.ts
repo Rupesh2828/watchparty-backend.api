@@ -250,11 +250,19 @@ export const addParticipantToWatchParty = async (req: Request, res: Response): P
       where: { id: watchPartyId },
       data: {
         participants: {
-          connect: newParticipantsIds.map((id: number) => ({ id })),
+          connect: newParticipantsIds.map((id: number) => ({ id})),
         },
       },
       include: {
-        participants: true // Include participants in the response
+       // Include participants in the response
+        participants: {
+          select:{
+            id: true,
+            username: true,
+            avatar: true
+          }
+        }
+
       }
     })
 
@@ -271,5 +279,83 @@ export const addParticipantToWatchParty = async (req: Request, res: Response): P
     res.status(500).json({ error: "Internal server error" })
 
   }
+
+}
+
+export const removeParticipantFromWatchParty = async (req: Request, res: Response): Promise<void> => {
+ 
+      
+    try {
+      
+      const { id } = req.params;
+      const participantsIds = req.body.participantsIds;
+  
+      if (!id || isNaN(Number(id))) {
+        res.status(400).json({ message: "Valid Watch Party ID is required." });
+        return;
+      }
+
+      if(!participantsIds || !Array.isArray(participantsIds) || participantsIds.length === 0){
+        res.status(400).json({ message: "Participants IDs must be an array of user IDs." });
+        return;
+      }
+
+      const watchPartyId = parseInt(id);
+
+      //fetch the watchparty if its exists or not
+
+      const watchParty = await prisma.watchParty.findUnique({
+        where: { id: watchPartyId },
+        include: { participants: true }
+  
+      })
+
+      if (!watchParty) {
+        res.status(404).json({ message: "Watch Party not found." })
+        return;
+      }
+
+      const participantsToRemove = participantsIds.filter((id: number) => {
+        return watchParty.participants.some((participant) => participant.id === id)
+      })
+
+      if (participantsToRemove.length === 0) {
+        res.status(400).json({ message: "None of the provided users are participants of this watch party." });
+        return;
+      }
+
+      //removing participant from watchparty
+      const updatedWatchParty = await prisma.watchParty.update({
+        where: { id: watchPartyId },
+        data: {
+          participants: {
+            disconnect: participantsToRemove.map((id: number) => ({ id })),
+          },
+        },
+        include: {
+          participants: {
+            select:{
+              id: true,
+              username: true,
+              avatar: true
+            }
+          } // Include participants in the response
+        }
+      })
+
+      if (!updatedWatchParty) {
+        res.status(400).json({ message: "Unable to remove participant from watchparty." })
+        return;
+      }
+
+      res.status(200).json({ message: "Participant removed from watchparty successfully.", watchParty: updatedWatchParty })
+
+
+    } catch (error) {
+      console.log("Error removing participant from watchparty")
+      res.status(500).json({ error: "Internal server error" })
+      
+    }
+    
 
 }
