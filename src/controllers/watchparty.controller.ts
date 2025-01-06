@@ -334,12 +334,12 @@ export const removeParticipantFromWatchParty = async (req: Request, res: Respons
         },
         include: {
           participants: {
-            select:{
-              id: true,
-              username: true,
-              avatar: true
-            }
-          } // Include participants in the response
+          select:{
+            id: true,
+            username: true,
+            avatar: true
+          }
+        } // Include participants in the response
         }
       })
 
@@ -358,4 +358,105 @@ export const removeParticipantFromWatchParty = async (req: Request, res: Respons
     }
     
 
+}
+
+export const startWatchPartyLive = async(req:Request, res:Response): Promise<void> => {
+
+ try {
+
+  const {id} = req.params;
+
+
+  if (!id || isNaN(Number(id))) {
+   res.status(400).json({ message: "Valid Watch Party ID is required." });
+   return;
+ }
+
+ const watchPartyId = parseInt(id);
+
+ const watchParty = await prisma.watchParty.findUnique({
+   where: { id: watchPartyId },
+   include: { participants: true }
+
+ })
+
+ if (!watchParty) {
+   res.status(404).json({ message: "Watch Party not found." })
+   return;
+ }
+
+ const updatedWatchParty = await prisma.watchParty.update({
+   where: { id: watchPartyId },
+   data: {
+     isLive: true
+   }
+ })
+
+ if (!updatedWatchParty) {
+   res.status(400).json({ message: "Unable to start watchparty live." })
+   return;
+ }
+
+ res.status(200).json({
+  message: "Watchparty started live successfully.",
+  watchParty: { ...updatedWatchParty, participants: watchParty.participants },
+});
+
+  
+ } catch (error) {
+    console.log("Error starting watchparty live")
+    res.status(500).json({ error: "Internal server error" })
+  
+ }
+
+  
+}
+
+export const endWatchPartyLive = async(req:Request, res:Response): Promise<void> => {
+ 
+  try {
+ 
+   const {id} = req.params;
+ 
+ 
+   if (!id || isNaN(Number(id))) {
+    res.status(400).json({ message: "Valid Watch Party ID is required." });
+    return;
+  }
+ 
+  const watchPartyId = parseInt(id);
+ 
+  const watchParty = await prisma.watchParty.findUnique({
+    where: { id: watchPartyId },
+    include: { participants: true }
+ 
+  })
+ 
+  if (!watchParty) {
+    res.status(404).json({ message: "Watch Party not found." })
+    return;
+  }
+ 
+  const updatedWatchParty = await prisma.watchParty.update({
+    where: { id: watchPartyId },
+    data: {
+      isLive: false
+    }
+  })
+ 
+  if (!updatedWatchParty) {
+    res.status(400).json({ message: "Unable to end watchparty live." })
+    return;
+  }
+ 
+  res.status(200).json({
+   message: "Watchparty ended live successfully.",
+   watchParty: { ...updatedWatchParty, participants: watchParty.participants },
+ });
+ 
+   
+  } catch (error) {
+     console.log("Error ending watchparty live")
+     res.status(500).json({ error: "Internal server error" })
+     }
 }
