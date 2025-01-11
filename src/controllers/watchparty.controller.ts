@@ -459,3 +459,49 @@ export const endWatchPartyLive = async(req:Request, res:Response): Promise<void>
      res.status(500).json({ error: "Internal server error" })
      }
 }
+
+
+
+// export const createWebcamSlot = async (req: Request, res: Response): Promise<void> => {
+
+//   try {
+
+//       const { watchPartyId, isActive, slotNumber, userId } = req.body;
+
+//       if (!watchPartyId || !slotNumber) {
+//           res.status(400).json({ message: "watchPartyId and slotNumber are required." });
+          
+//         }
+        
+//       //checking if user exists or not
+//       const existingUser = await prisma.user.findFirst({ where: { id: userId } })
+
+//       if (!existingUser) {
+//           res.status(400).json({ message: "User does not exists" })
+//       }
+
+//       const newSlot = await prisma.webcamSlot.create({
+//           data: {
+//               watchPartyId,
+//               isActive,
+//               slotNumber,
+//               userId
+//           }
+//       })
+
+//       if (!newSlot) {
+//           res.status(400).json({ message: "WebCam slot creation failed" })
+
+//       }
+
+//       res.status(201).json({ message: "WebcamSlot created successfully.", newSlot })
+
+
+//   } catch (error) {
+//       console.log("Error creating webcamslot ")
+//       res.status(500).json({ error: "Internal server error" })
+
+//   }
+
+
+// }

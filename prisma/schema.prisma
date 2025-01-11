@@ -46,6 +46,7 @@ model WatchParty {
 }
 
 model WebcamSlot {
+  
   id           Int        @id @default(autoincrement())
   watchPartyId Int
   watchParty   WatchParty @relation(fields: [watchPartyId], references: [id])

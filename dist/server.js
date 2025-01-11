@@ -20,9 +20,11 @@ app.use(cookieParser());
 // Routes import
 import userRouter from "./routes/user.route.js";
 import watchpartyRouter from "./routes/watchparty.route.js";
+import webcamRouter from "./routes/webcamslots.route.js";
 // Routes Declaration
 app.use("/api/users", userRouter);
 app.use("/api/watchparties", watchpartyRouter);
+app.use("/api/webcamslots", webcamRouter);
 // Start the server
 async function startServer() {
     try {
