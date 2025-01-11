@@ -47,7 +47,7 @@ export const createWebcamSlot = async (req: Request, res: Response): Promise<voi
             return;
         }
 
-        
+
 
         const newSlot = await prisma.webcamSlot.create({
             data: {
@@ -197,3 +197,71 @@ export const deleteWebcamSlot = async (req: Request, res: Response): Promise<voi
     }
 
 }
+
+export const assignWebcamSlot = async (req: Request, res: Response): Promise<void> => {
+    const { id } = req.params;
+    const { userId } = req.body;
+
+    try {
+
+        if (!id || !userId) {
+            res.status(400).json({ message: "id and userId are required." });
+            return;
+        }
+
+        const webcamSlot = await prisma.webcamSlot.findUnique({
+            where: { id: parseInt(id) }
+        });
+
+        if (!webcamSlot) {
+            res.status(404).json({ message: "Webcam slot not found." });
+            return;
+        }
+
+        const updatedSlot = await prisma.webcamSlot.update({
+            where: { id: parseInt(id) },
+            data: { userId: parseInt(userId) }
+        });
+
+        res.status(200).json({ message: "Webcam slot assigned successfully.", updatedSlot });
+
+    } catch (error) {
+        console.error("Error assigning webcam slot:", error);
+        res.status(500).json({ error: "Internal server error" });
+    }
+
+}
+
+export const unassignWebcamSlot = async (req: Request, res: Response): Promise<void> => {
+    const { id } = req.params;
+
+    try {
+
+        if (!id) {
+            res.status(400).json({ message: "id is required." });
+            return;
+        }
+
+        const webcamSlot = await prisma.webcamSlot.findUnique({
+            where: { id: parseInt(id) }
+        });
+
+        if (!webcamSlot) {
+            res.status(404).json({ message: "Webcam slot not found." });
+            return;
+        }
+
+        const updatedSlot = await prisma.webcamSlot.update({
+            where: { id: parseInt(id) },
+            data: { userId: null }
+        });
+
+        res.status(200).json({ message: "Webcam slot unassigned successfully.", updatedSlot });
+
+    } catch (error) {
+        console.error("Error unassigning webcam slot:", error);
+        res.status(500).json({ error: "Internal server error" });
+    }
+}
+
+

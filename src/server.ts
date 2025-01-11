@@ -28,11 +28,13 @@ app.use(cookieParser());
 import userRouter from "./routes/user.route.js";
 import watchpartyRouter from "./routes/watchparty.route.js"
 import webcamRouter from "./routes/webcamslots.route.js"
+import messageRouter from "./routes/chatmessages.route.js"
 
 // Routes Declaration
 app.use("/api/users", userRouter);
 app.use("/api/watchparties", watchpartyRouter)
 app.use("/api/webcamslots", webcamRouter)
+app.use("/api/messages", messageRouter)
 
 
 // Start the server

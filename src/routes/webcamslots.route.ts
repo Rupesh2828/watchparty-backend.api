@@ -1,7 +1,7 @@
 
 import { Router } from "express";
 import { authenticate } from "../middlewares/authenticate.js";
-import { createWebcamSlot, getWebcamSlotById, getAllWebcamSlots, updateWebcamSlot, deleteWebcamSlot } from "../controllers/webCamSlotController.js";
+import { createWebcamSlot, getWebcamSlotById, getAllWebcamSlots, updateWebcamSlot, deleteWebcamSlot } from "../controllers/webcamslot.controller.js";
 
 const router = Router()
 
