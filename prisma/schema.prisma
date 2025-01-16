@@ -14,57 +14,75 @@ datasource db {
 }
 
 model User {
-  id           Int          @id @default(autoincrement())
+  id           Int           @id @default(autoincrement())
   username     String
-  email        String       @unique
+  email        String        @unique
   password     String
   avatar       String?
-  createdAt    DateTime     @default(now())
-  updatedAt    DateTime?    @updatedAt
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime?     @updatedAt
   refreshToken String?
-  participants WatchParty[] @relation("Participants")
+  participants WatchParty[]  @relation("Participants")
   watchParties WatchParty[]
   webcamSlot   WebcamSlot[]
   chatMessages ChatMessage[]
+  reactions    Reaction[]
 }
 
 model WatchParty {
-  id           Int          @id @default(autoincrement())
+  id           Int           @id @default(autoincrement())
   title        String
   description  String
   hostId       Int
-  host         User         @relation(fields: [hostId], references: [id])
-  participants User[]       @relation("Participants")
+  host         User          @relation(fields: [hostId], references: [id])
+  participants User[]        @relation("Participants")
   videoUrl     String
   startTime    DateTime?
   endTime      DateTime?
-  isLive       Boolean      @default(false)
+  isLive       Boolean       @default(false)
   chatMessages ChatMessage[]
-  webcamSlots   WebcamSlot[]
-  createdAt    DateTime     @default(now())
-  updatedAt    DateTime     @updatedAt
+  webcamSlots  WebcamSlot[]
+  reactions    Reaction[]
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
 }
 
 model WebcamSlot {
-  
   id           Int        @id @default(autoincrement())
   watchPartyId Int
   watchParty   WatchParty @relation(fields: [watchPartyId], references: [id])
   userId       Int?
   user         User?      @relation(fields: [userId], references: [id])
   isActive     Boolean    @default(false)
-  slotNumber   Int       // 1, 2, or 3 (host is always 1)
+  slotNumber   Int // 1, 2, or 3 (host is always 1)
   createdAt    DateTime   @default(now())
 }
 
 model ChatMessage {
-  id             Int        @id @default(autoincrement())
-  watchPartyId   Int
-  watchParty     WatchParty @relation(fields: [watchPartyId], references: [id])
-  userId         Int
-  user           User       @relation(fields: [userId], references: [id])
-  message        String
-  createdAt      DateTime   @default(now())
-  updatedAt      DateTime?  @updatedAt
+  id           Int        @id @default(autoincrement())
+  watchPartyId Int
+  watchParty   WatchParty @relation(fields: [watchPartyId], references: [id])
+  userId       Int
+  user         User       @relation(fields: [userId], references: [id])
+  message      String
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime?  @updatedAt
+}
 
+enum ReactionType {
+  LIKE
+  LAUGH
+  CLAP
+  SAD
+  ANGRY
+}
+
+model Reaction {
+  id           Int          @id @default(autoincrement())
+  watchPartyId Int
+  watchParty   WatchParty   @relation(fields: [watchPartyId], references: [id])
+  userId       Int
+  user         User         @relation(fields: [userId], references: [id])
+  type         ReactionType // example "like", "laugh", "clap"
+  createdAt    DateTime     @default(now())
 }

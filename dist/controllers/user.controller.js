@@ -138,3 +138,158 @@ export const logoutUser = async (req, res) => {
         res.status(500).json({ message: "Internal Server Error" });
     }
 };
+export const updateUser = async (req, res) => {
+    try {
+        const userId = req.user?.id;
+        const { username, email } = req.body;
+        if (!userId) {
+            res.status(400).json({ message: "User ID is required to update user." });
+        }
+        const user = await prisma.user.findUnique({
+            where: { id: userId },
+        });
+        if (!user) {
+            res.status(404).json({ message: "User not found." });
+        }
+        const updatedUser = await prisma.user.update({
+            where: { id: userId },
+            data: {
+                username,
+                email,
+            },
+        });
+        res.status(200).json({ message: "User updated successfully", updatedUser });
+    }
+    catch (error) {
+        console.error("Error updating user:", error);
+        res.status(500).json({ message: "Internal Server Error" });
+    }
+};
+export const deleteUser = async (req, res) => {
+    try {
+        const userId = req.user?.id;
+        if (!userId) {
+            res.status(400).json({ message: "User ID is required to delete user." });
+        }
+        const user = await prisma.user.findUnique({
+            where: { id: userId },
+        });
+        if (!user) {
+            res.status(404).json({ message: "User not found." });
+        }
+        await prisma.user.delete({
+            where: { id: userId },
+        });
+        res.status(200).json({ message: "User deleted successfully" });
+    }
+    catch (error) {
+        console.error("Error deleting user:", error);
+        res.status(500).json({ message: "Internal Server Error" });
+    }
+};
+// export const refreshToken = async (req: Request, res: Response): Promise<void> => {
+//   try {
+//     const { refreshToken } = req.cookies;
+//     if (!refreshToken) {
+//       res.status(400).json({ message: "Refresh token is required." });
+//     }
+//     // Verify the refresh token
+//     const decoded = jwt.verify(refreshToken, process.env.REFRESH_TOKEN_SECRET) as { userId: number };
+//     const userId = decoded.userId;
+//     // Generate new access and refresh tokens
+//     const { accessToken, newRefreshToken } = await generateAccessAndRefreshToken(userId);
+//     // Set the new refresh token in the cookie
+//     res.cookie("refreshToken", newRefreshToken, {
+//       httpOnly: true,
+//       secure: true,
+//       sameSite: "strict",
+//       maxAge: 15 * 24 * 60 * 60 * 1000, // 15 days
+//     });
+//     // Send the new access token
+//     res.status(200).json({ accessToken });
+//   } catch (error) {
+//     console.error("Error refreshing token:", error);
+//     res.status(500).json({ message: "Internal Server Error" });
+//   }
+// }
+export const getUser = async (req, res) => {
+    try {
+        const userId = req.user?.id;
+        if (!userId) {
+            res.status(400).json({ message: "User ID is required to get user." });
+        }
+        const user = await prisma.user.findUnique({
+            where: { id: userId },
+        });
+        if (!user) {
+            res.status(404).json({ message: "User not found." });
+        }
+        res.status(200).json({ user });
+    }
+    catch (error) {
+        console.error("Error getting user:", error);
+        res.status(500).json({ message: "Internal Server Error" });
+    }
+};
+export const changePassword = async (req, res) => {
+    try {
+        const userId = req.user?.id;
+        const { oldPassword, newPassword } = req.body;
+        if (!userId) {
+            res.status(400).json({ message: "User ID is required to change password." });
+        }
+        const user = await prisma.user.findUnique({
+            where: { id: userId },
+        });
+        if (!user) {
+            res.status(404).json({ message: "User not found." });
+        }
+        const isPasswordValid = await isPasswordCorrect(oldPassword, user.password);
+        if (!isPasswordValid) {
+            res.status(401).json({ message: "Incorrect password." });
+        }
+        const hashedPassword = await hashPassword(newPassword);
+        await prisma.user.update({
+            where: { id: userId },
+            data: { password: hashedPassword },
+        });
+        res.status(200).json({ message: "Password changed successfully." });
+    }
+    catch (error) {
+        console.error("Error changing password:", error);
+        res.status(500).json({ message: "Internal Server Error" });
+    }
+};
+export const getAllUsers = async (req, res) => {
+    try {
+        const users = await prisma.user.findMany();
+        res.status(200).json({ users });
+    }
+    catch (error) {
+        console.error("Error getting all users:", error);
+        res.status(500).json({ message: "Internal Server Error" });
+    }
+};
+// export const assignRole = async (req: Request, res: Response): Promise<void> => {
+//   try {
+//     const userId = req.user?.id;
+//     const { role } = req.body;
+//     if (!userId) {
+//       res.status(400).json({ message: "User ID is required to assign role." });
+//     }
+//     const user = await prisma.user.findUnique({
+//       where: { id: userId },
+//     });
+//     if (!user) {
+//       res.status(404).json({ message: "User not found." });
+//     }
+//     await prisma.user.update({
+//       where: { id: userId },
+//       data: { role },
+//     });
+//     res.status(200).json({ message: "Role assigned successfully." });
+//   } catch (error) {
+//     console.error("Error assigning role:", error);
+//     res.status(500).json({ message: "Internal Server Error" });
+//   }
+// }
