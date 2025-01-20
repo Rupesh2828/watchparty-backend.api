@@ -23,12 +23,14 @@ import watchpartyRouter from "./routes/watchparty.route.js";
 import webcamRouter from "./routes/webcamslots.route.js";
 import messageRouter from "./routes/chatmessages.route.js";
 import reactionRouter from "./routes/reaction.route.js";
+import playbacksyncRouter from "./routes/playbacksync.route.js";
 // Routes Declaration
 app.use("/api/users", userRouter);
 app.use("/api/watchparties", watchpartyRouter);
 app.use("/api/webcamslots", webcamRouter);
 app.use("/api/messages", messageRouter);
 app.use("/api/reactions", reactionRouter);
+app.use("/api/playbacksync", playbacksyncRouter);
 // Start the server
 async function startServer() {
     try {

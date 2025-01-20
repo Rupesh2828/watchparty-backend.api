@@ -29,6 +29,7 @@ model User {
   reactions    Reaction[]
   notifications Notification[]
   mediaLibrary  MediaLibrary[]
+  media         Media[]
   playbackSyncs PlaybackSync[]
   
 }
@@ -48,6 +49,7 @@ model WatchParty {
   webcamSlots  WebcamSlot[]
   reactions    Reaction[]
   playbackSync PlaybackSync[]
+  media        Media[]
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @updatedAt
 }
@@ -109,9 +111,14 @@ model PlaybackSync {
 
 model Media {
   id          Int        @id @default(autoincrement())
-  title       String
-  description String
-  url         String
+  watchPartyId Int
+  watchParty   WatchParty @relation(fields: [watchPartyId], references: [id])
+  userId       Int
+  user         User       @relation(fields: [userId], references: [id])
+  mediaTitle       String
+  mediaDescription String
+  mediaUrl         String
+  mediaType        String
   createdAt   DateTime   @default(now())
   playbackSyncs PlaybackSync[]
 
