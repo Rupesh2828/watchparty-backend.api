@@ -49,31 +49,34 @@ export const notifyWatchPartyStart = async (req: Request, res: Response): Promis
   };
   
 
-export const getUserNotifications = async (req: Request, res: Response): Promise<void> => {
-
+  export const getUserNotifications = async (req: Request, res: Response): Promise<void> => {
     try {
-
         const userId: number = (req as any).user?.userId;
 
         console.log("Fetching notifications for user ID:", userId);
 
         if (!userId) {
-            res.status(400).json({ message: "User must be authenticated." })
+            res.status(400).json({ message: "User must be authenticated." });
+            return;
         }
 
         const notifications = await prisma.notification.findMany({
             where: { userId },
             orderBy: { createdAt: "desc" },
-        })
+        });
 
         console.log("Notifications found:", notifications);
+
+        // If no notifications are found for the user
+        if (notifications.length === 0) {
+            res.status(200).json({ message: "No notifications found for this user." });
+            return;
+        }
 
         res.status(200).json({ notifications });
 
     } catch (error) {
         console.log("Error while fetching notifications for user", error);
-        res.status(500).json({ error: "Internal server error" })
-
+        res.status(500).json({ error: "Internal server error" });
     }
-
-}
+};
