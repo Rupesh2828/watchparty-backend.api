@@ -31,6 +31,8 @@ import webcamRouter from "./routes/webcamslots.route.js"
 import messageRouter from "./routes/chatmessages.route.js"
 import reactionRouter from "./routes/reaction.route.js"
 import playbacksyncRouter from "./routes/playbacksync.route.js"
+import mediaRouter from "./routes/media.route.js"
+import notificationRouter from "./routes/notification.route.js"
 
 // Routes Declaration
 app.use("/api/users", userRouter);
@@ -39,6 +41,8 @@ app.use("/api/webcamslots", webcamRouter)
 app.use("/api/messages", messageRouter)
 app.use("/api/reactions", reactionRouter)
 app.use("/api/playbacksync", playbacksyncRouter)
+app.use("/api/media", mediaRouter)
+app.use("/api/notification", notificationRouter)
 
 
 // Start the server

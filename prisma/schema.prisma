@@ -14,44 +14,44 @@ datasource db {
 }
 
 model User {
-  id           Int           @id @default(autoincrement())
-  username     String
-  email        String        @unique
-  password     String
-  avatar       String?
-  createdAt    DateTime      @default(now())
-  updatedAt    DateTime?     @updatedAt
-  refreshToken String?
-  participants WatchParty[]  @relation("Participants")
-  watchParties WatchParty[]
-  webcamSlot   WebcamSlot[]
-  chatMessages ChatMessage[]
-  reactions    Reaction[]
+  id            Int            @id @default(autoincrement())
+  username      String
+  email         String         @unique
+  password      String
+  avatar        String?
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime?      @updatedAt
+  refreshToken  String?
+  participants  WatchParty[]   @relation("Participants")
+  watchParties  WatchParty[]
+  webcamSlot    WebcamSlot[]
+  chatMessages  ChatMessage[]
+  reactions     Reaction[]
   notifications Notification[]
   mediaLibrary  MediaLibrary[]
   media         Media[]
   playbackSyncs PlaybackSync[]
-  
 }
 
 model WatchParty {
-  id           Int           @id @default(autoincrement())
-  title        String
-  description  String
-  hostId       Int
-  host         User          @relation(fields: [hostId], references: [id])
-  participants User[]        @relation("Participants")
-  videoUrl     String
-  startTime    DateTime?
-  endTime      DateTime?
-  isLive       Boolean       @default(false)
-  chatMessages ChatMessage[]
-  webcamSlots  WebcamSlot[]
-  reactions    Reaction[]
-  playbackSync PlaybackSync[]
-  media        Media[]
-  createdAt    DateTime      @default(now())
-  updatedAt    DateTime      @updatedAt
+  id                Int            @id @default(autoincrement())
+  title             String
+  description       String
+  hostId            Int
+  host              User           @relation(fields: [hostId], references: [id])
+  participants      User[]         @relation("Participants")
+  videoUrl          String
+  startTime         DateTime?
+  endTime           DateTime?
+  isLive            Boolean        @default(false)
+  chatMessages      ChatMessage[]
+  webcamSlots       WebcamSlot[]
+  reactions         Reaction[]
+  playbackSync      PlaybackSync[]
+  userNotifincation Notification[]
+  media             Media[]
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
 }
 
 model WebcamSlot {
@@ -100,47 +100,45 @@ model PlaybackSync {
   watchParty   WatchParty @relation(fields: [watchPartyId], references: [id])
   userId       Int
   user         User       @relation(fields: [userId], references: [id])
-  currentTime  Float      // Current playback position in seconds
+  currentTime  Float // Current playback position in seconds
   isPaused     Boolean    @default(false)
-  volume       Float      @default(1.0)     // Volume level, 1.0 being 100%
+  volume       Float      @default(1.0) // Volume level, 1.0 being 100%
   mediaId      Int
   media        Media      @relation(fields: [mediaId], references: [id]) // Link to media item
   updatedAt    DateTime   @updatedAt
 }
 
-
 model Media {
-  id          Int        @id @default(autoincrement())
-  watchPartyId Int
-  watchParty   WatchParty @relation(fields: [watchPartyId], references: [id])
-  userId       Int
-  user         User       @relation(fields: [userId], references: [id])
+  id               Int            @id @default(autoincrement())
+  watchPartyId     Int
+  watchParty       WatchParty     @relation(fields: [watchPartyId], references: [id])
+  userId           Int
+  user             User           @relation(fields: [userId], references: [id])
   mediaTitle       String
   mediaDescription String
   mediaUrl         String
   mediaType        String
-  createdAt   DateTime   @default(now())
-  playbackSyncs PlaybackSync[]
-
+  createdAt        DateTime       @default(now())
+  playbackSyncs    PlaybackSync[]
 }
 
 model MediaLibrary {
-  id          Int        @id @default(autoincrement())
+  id          Int      @id @default(autoincrement())
   title       String
   description String
   url         String
   addedById   Int
-  addedBy     User       @relation(fields: [addedById], references: [id])
-  createdAt   DateTime   @default(now())
+  addedBy     User     @relation(fields: [addedById], references: [id])
+  createdAt   DateTime @default(now())
 }
-
 
 model Notification {
   id           Int        @id @default(autoincrement())
   userId       Int
   user         User       @relation(fields: [userId], references: [id])
-  type         String     // e.g., "chat", "reaction", "invitation"
-  content      String
+  watchPartyId Int
+  watchParty   WatchParty @relation(fields: [watchPartyId], references: [id])
+  content      String     @default("The watch party has started! Join now.")
   isRead       Boolean    @default(false)
   createdAt    DateTime   @default(now())
 }

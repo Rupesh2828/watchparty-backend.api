@@ -53,6 +53,8 @@ export const createMedia = async(req:Request, res:Response): Promise<void> => {
 
         
     } catch (error) {
+        console.log("Error while creating media for playbacksync", error);
+        res.status(500).json({ error: "Internal server error" })
         
     }
 
