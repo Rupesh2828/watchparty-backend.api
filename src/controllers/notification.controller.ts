@@ -80,3 +80,30 @@ export const notifyWatchPartyStart = async (req: Request, res: Response): Promis
         res.status(500).json({ error: "Internal server error" });
     }
 };
+
+export const markNotificationAsRead = async (req: Request, res: Response): Promise<void> => {
+    try {
+        const userId: number = (req as any).user?.userId;
+        const { notificationId } = req.params;
+
+        console.log("Marking notification as read for user ID:", userId);
+
+        if (!userId || !notificationId) {
+            res.status(400).json({ message: "User must be authenticated, and notification ID is required." });
+            return;
+        }
+
+        const notification = await prisma.notification.update({
+            where: { id: parseInt(notificationId) },
+            data: { isRead: true },
+        });
+
+        console.log("Notification marked as read:", notification);
+
+        res.status(200).json({ message: "Notification marked as read." });
+
+    } catch (error) {
+        console.log("Error while marking notification as read", error);
+        res.status(500).json({ error: "Internal server error" });
+    }
+}

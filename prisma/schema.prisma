@@ -139,6 +139,6 @@ model Notification {
   watchPartyId Int
   watchParty   WatchParty @relation(fields: [watchPartyId], references: [id])
   content      String     @default("The watch party has started! Join now.")
-  isRead       Boolean    @default(false)
+  isRead       Boolean    @default(false) 
   createdAt    DateTime   @default(now())
 }
