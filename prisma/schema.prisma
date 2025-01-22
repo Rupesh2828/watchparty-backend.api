@@ -114,6 +114,8 @@ model Media {
   watchParty       WatchParty     @relation(fields: [watchPartyId], references: [id])
   userId           Int
   user             User           @relation(fields: [userId], references: [id])
+  mediaLibraryId   Int?           // Nullable foreign key
+  mediaLibrary     MediaLibrary?  @relation(fields: [mediaLibraryId], references: [id])
   mediaTitle       String
   mediaDescription String
   mediaUrl         String
@@ -129,6 +131,7 @@ model MediaLibrary {
   url         String
   addedById   Int
   addedBy     User     @relation(fields: [addedById], references: [id])
+  media       Media[]  // Backreference to Media
   createdAt   DateTime @default(now())
 }
 
