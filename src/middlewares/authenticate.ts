@@ -19,7 +19,10 @@ export const authenticate = async (req: Request, res: Response, next: NextFuncti
       const decodedAccess = jwt.verify(accessToken, process.env.ACCESS_TOKEN_SECRET) as { userId: number, email: string };
 
       // Attach the user to the request object
-      (req as any).user = decodedAccess;
+      // (req as any).user = decodedAccess;
+      req.context = req.context || { user:decodedAccess }
+      req.context.user = decodedAccess
+
       return next();
     } catch (accessError) {
       console.warn("Access Token Verification Failed:", accessError.message);

@@ -13,7 +13,9 @@ export const authenticate = async (req, res, next) => {
             // Verify the access token and sending object of userid and email via  req.user
             const decodedAccess = jwt.verify(accessToken, process.env.ACCESS_TOKEN_SECRET);
             // Attach the user to the request object
-            req.user = decodedAccess;
+            // (req as any).user = decodedAccess;
+            req.context = req.context || { user: decodedAccess };
+            req.context.user = decodedAccess;
             return next();
         }
         catch (accessError) {

@@ -1,9 +1,12 @@
-import { Request } from 'express';
+// express.d.ts (or custom.d.ts)
+import * as express from 'express';
 
 declare global {
   namespace Express {
     interface Request {
-        user?: { id: number }; // Adjust the type based on what you expect like string, object
+      context?: {
+        user: { userId: number; email: string }; // Customize based on your decoded token structure
+      };
     }
   }
 }

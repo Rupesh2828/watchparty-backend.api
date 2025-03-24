@@ -30,6 +30,12 @@ export const generateAccessAndRefreshToken = async (userId) => {
 };
 export const createUser = async (req, res) => {
     try {
+        const authenticatedUser = req.context?.user;
+        // Optionally, you can check for the user in req.context to ensure authentication
+        if (!authenticatedUser) {
+            res.status(401).json({ error: 'Unauthorized. User is not authenticated.' });
+            return;
+        }
         const { username, email, password } = req.body;
         console.log("Username:", username);
         if (!email || !password || !username) {
@@ -107,7 +113,7 @@ export const loginUser = async (req, res) => {
 };
 export const logoutUser = async (req, res) => {
     try {
-        const userId = req.user?.id || req.body.userId;
+        const userId = req.context?.user || req.body.userId;
         if (!userId) {
             res.status(400).json({ message: "User ID is required to logout." });
         }
