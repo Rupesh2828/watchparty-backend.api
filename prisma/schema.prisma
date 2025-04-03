@@ -41,6 +41,7 @@ model WatchParty {
   host              User           @relation(fields: [hostId], references: [id])
   participants      User[]         @relation("Participants")
   videoUrl          String
+  streamUrl         String? 
   startTime         DateTime?
   endTime           DateTime?
   isLive            Boolean        @default(false)

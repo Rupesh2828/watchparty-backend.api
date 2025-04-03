@@ -2,14 +2,13 @@ import express from "express";
 import cors from "cors";
 import cookieParser from "cookie-parser";
 import dotenv from "dotenv";
+import path from "path";
 import { PrismaClient } from "@prisma/client";
-// Load environment variables from .env file
 dotenv.config();
 const app = express();
 const prisma = new PrismaClient();
-// Define the port from environment variables
-const PORT = process.env.PORT || 8000; // Default to 8000 if not provided
-// Middleware
+const PORT = process.env.PORT || 8000;
+const STREAM_ROOT_DIR = process.env.STREAM_DIR || './streams';
 app.use(cors({
     origin: process.env.CORS_ORIGIN,
     credentials: true,
@@ -17,7 +16,6 @@ app.use(cors({
 app.use(express.json());
 app.use(express.urlencoded({ extended: true, limit: "20kb" }));
 app.use(cookieParser());
-// Routes import
 import userRouter from "./routes/user.route.js";
 import watchpartyRouter from "./routes/watchparty.route.js";
 import webcamRouter from "./routes/webcamslots.route.js";
@@ -26,6 +24,20 @@ import reactionRouter from "./routes/reaction.route.js";
 import playbacksyncRouter from "./routes/playbacksync.route.js";
 import mediaRouter from "./routes/media.route.js";
 import notificationRouter from "./routes/notification.route.js";
+// Serve HLS stream files with appropriate headers
+app.use('/streams', (req, res, next) => {
+    const filePath = path.join(STREAM_ROOT_DIR, req.url);
+    // Set CORS headers for video streaming
+    res.header('Access-Control-Allow-Origin', '*');
+    // Set content types for HLS streaming
+    if (req.url.endsWith('.m3u8')) {
+        res.setHeader('Content-Type', 'application/vnd.apple.mpegurl');
+    }
+    else if (req.url.endsWith('.ts')) {
+        res.setHeader('Content-Type', 'video/MP2T');
+    }
+    next();
+}, express.static(STREAM_ROOT_DIR));
 // Routes Declaration
 app.use("/api/users", userRouter);
 app.use("/api/watchparties", watchpartyRouter);
