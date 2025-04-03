@@ -3,35 +3,50 @@ import { Request, Response, NextFunction } from "express";
 
 export const authenticate = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
-    const accessToken = req.cookies['accessToken'];
-    const refreshToken = req.cookies['refreshToken'];
+    const accessToken = req.cookies?.accessToken;
+    const refreshToken = req.cookies?.refreshToken;
 
-    // console.log("Access Token:", accessToken);
-    // console.log("Refresh Token:", refreshToken);
-
-    if (!accessToken && !refreshToken) {
+    if (!accessToken) {
+      console.log("No Access Token Found.");
       res.status(401).json({ message: "Access Denied. No token provided." });
-      return;
+      return
     }
 
     try {
-      // Verify the access token and sending object of userid and email via  req.user
-      const decodedAccess = jwt.verify(accessToken, process.env.ACCESS_TOKEN_SECRET) as { userId: number, email: string };
+      // Verify access token
+      const decodedAccess = jwt.verify(
+        accessToken,
+        process.env.ACCESS_TOKEN_SECRET!
+      ) as { userId: number; email: string };
 
-      // Attach the user to the request object
-      // (req as any).user = decodedAccess;
-      req.context = req.context || { user:decodedAccess }
-      req.context.user = decodedAccess
+      // Attach user to request (fixing context issue)
+      (req as any).context = (req as any).context || {};
+      (req as any).context.user = decodedAccess;
+
+      console.log("Authenticated User:", decodedAccess);
 
       return next();
     } catch (accessError) {
       console.warn("Access Token Verification Failed:", accessError.message);
-
-   
     }
 
-    // If both tokens fail, deny access
-    res.status(401).json({ message: "Invalid or expired tokens." });
+    // If token verification fails, check if refreshToken exists
+    if (!refreshToken) {
+      console.log("No Refresh Token Available.");
+       res.status(401).json({ message: "Invalid or expired tokens." });
+       return
+    }
+
+    try {
+      // Verify the refresh token (optional: you might refresh the token here)
+      jwt.verify(refreshToken, process.env.REFRESH_TOKEN_SECRET!);
+       res.status(403).json({ message: "Access token expired. Please refresh." });
+       return
+    } catch (refreshError) {
+      console.error("Refresh Token Verification Failed:", refreshError.message);
+       res.status(403).json({ message: "Invalid refresh token." });
+       return;
+    }
   } catch (error) {
     console.error("Authentication Error:", error.message);
     res.status(500).json({ message: "Internal Server Error." });

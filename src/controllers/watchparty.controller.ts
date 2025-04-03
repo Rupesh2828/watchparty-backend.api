@@ -17,7 +17,7 @@ export const createWatchParty = async (req: Request, res: Response): Promise<voi
   try {
     const { title, description, videoUrl, startTime, endTime } = req.body;
 
-    const hostId = (req as any).user?.userId;
+    const hostId = req.context?.user?.userId;
 
     if (!hostId) {
       res.status(401).json({ message: "Host ID is required." });
@@ -369,6 +369,44 @@ export const removeParticipantFromWatchParty = async (req: Request, res: Respons
 
 }
 
+export const getStreamInfo = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { id } = req.params;
+    
+    if (!id || isNaN(Number(id))) {
+      res.status(400).json({ message: "Valid Watch Party ID is required." });
+      return;
+    }
+    
+    const watchPartyId = parseInt(id);
+    
+    const watchParty = await prisma.watchParty.findUnique({
+      where: { id: watchPartyId },
+      select: {
+        id: true,
+        title: true,
+        isLive: true,
+        streamUrl: true
+      }
+    });
+    
+    if (!watchParty) {
+      res.status(404).json({ message: "Watch Party not found." });
+      return;
+    }
+    
+    res.status(200).json({
+      message: "Stream info retrieved successfully",
+      isStreaming: activeStreams.has(watchPartyId),
+      watchParty
+    });
+    
+  } catch (error) {
+    console.error("Error retrieving stream info:", error);
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+};
+
 export const cleanupStream = async(watchPartyId: number): Promise<void> => {
   if (activeStreams.has(watchPartyId)) {
     activeStreams.delete(watchPartyId);
@@ -384,87 +422,90 @@ interface StreamInfo {
 const activeStreams: Map<number, StreamInfo> = new Map();
 
 
-export const startStreaming = async(req:Request, res:Response): Promise<void> => {
+export const startStreaming = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { videoUrl } = req.body;
+    const { id } = req.params;
 
- try {
-  
-  const {videoUrl} = req.body;
-  const {id} = req.params;
+    if (!id || isNaN(Number(id))) {
+      res.status(400).json({ message: "Valid Watch Party ID is required." });
+      return;
+    }
 
+    if (!videoUrl) {
+      res.status(400).json({ message: "Video URL is required" });
+      return;
+    }
 
-  if (!id || isNaN(Number(id))) {
-   res.status(400).json({ message: "Valid Watch Party ID is required." });
-   return;
- }
+    //for valid url
+    if (!/^https?:\/\/.+\..+/.test(videoUrl)) {
+      res.status(400).json({ message: "Invalid Video URL format" });
+      return;
+    }
 
- if(!videoUrl){
-  res.status(400).json({message:"Video URL is required"})
- }
+    const watchPartyId = parseInt(id);
 
- const watchPartyId = parseInt(id);
+    const watchParty = await prisma.watchParty.findUnique({
+      where: { id: watchPartyId },
+      include: { participants: true }
+    });
 
- const watchParty = await prisma.watchParty.findUnique({
-   where: { id: watchPartyId },
-   include: { participants: true }
+    if (!watchParty) {
+      res.status(404).json({ message: "Watch Party not found." });
+      return;
+    }
 
- })
+    // Check if streaming is already active
+    if (activeStreams.has(watchPartyId)) {
+      res.status(400).json({ message: "Streaming is already active for this watch party" });
+      return;
+    }
 
- if (!watchParty) {
-   res.status(404).json({ message: "Watch Party not found." })
-   return;
- }
-
-  // checking if streaming is already active for this watch party
- if (activeStreams.has(watchPartyId)) {
-  res.status(400).json({message:"Streaming is already active for this watchparty"})
-  return;
-  
- }
-
- //this is for creating subdirectory for each watch party.
- const streamDir = path.join(STREAM_ROOT_DIR, watchPartyId.toString());
+    // Create a subdirectory for each watch party
+    const streamDir = path.join(STREAM_ROOT_DIR, watchPartyId.toString());
     if (!existsSync(streamDir)) {
       mkdirSync(streamDir, { recursive: true });
     }
 
     const outputPath = path.join(streamDir, 'stream.m3u8');
 
- // Set up FFmpeg command for HLS streaming
+    // Set up FFmpeg command for HLS streaming
     const ffmpeg = spawn('ffmpeg', [
-      '-i', videoUrl,                         // Input file
-      '-c:v', 'libx264',                      // Video codec
-      '-c:a', 'aac',                          // Audio codec
-      '-b:v', '1M',                           // Video bitrate
-      '-b:a', '128k',                         // Audio bitrate
-      '-hls_time', HLS_SEGMENT_DURATION.toString(),  // Segment duration
-      '-hls_list_size', '10',                 // Number of segments in playlist
-      '-hls_flags', 'delete_segments',        // Delete old segments
-      '-f', 'hls',                            // HLS format
-      outputPath                              // Output file
+      '-i', videoUrl,
+      '-c:v', 'libx264',
+      '-c:a', 'aac',
+      '-b:v', '1M',
+      '-b:a', '128k',
+      '-hls_time', HLS_SEGMENT_DURATION.toString(),
+      '-hls_list_size', '10',
+      '-hls_flags', 'delete_segments',
+      '-f', 'hls',
+      outputPath
     ]);
-    
-    // Handle FFmpeg process events
+
+    // FFmpeg Process Logging & Handling
     ffmpeg.stderr.on('data', (data) => {
       console.log(`FFmpeg [${watchPartyId}]: ${data.toString()}`);
     });
-    
+
     ffmpeg.on('error', (error) => {
       console.error(`FFmpeg error [${watchPartyId}]:`, error);
       cleanupStream(watchPartyId);
+      res.status(500).json({ message: "Streaming failed due to FFmpeg error" });
     });
-    
+
     ffmpeg.on('exit', (code, signal) => {
       console.log(`FFmpeg process exited with code ${code} and signal ${signal}`);
       cleanupStream(watchPartyId);
     });
-    
+
     // Store FFmpeg process reference
     activeStreams.set(watchPartyId, {
       process: ffmpeg,
       outputPath,
       streamDir
     });
-    
+
     // Update watch party status
     await prisma.watchParty.update({
       where: { id: watchPartyId },
@@ -473,21 +514,18 @@ export const startStreaming = async(req:Request, res:Response): Promise<void> =>
         streamUrl: `/streams/${watchPartyId}/stream.m3u8`
       }
     });
-    
+
     res.status(200).json({
       message: "Streaming started successfully",
       streamUrl: `/streams/${watchPartyId}/stream.m3u8`
     });
 
-  
- } catch (error) {
-    console.log("Error starting watchparty live")
-    res.status(500).json({ error: "Internal server error" })
-  
- }
+  } catch (error) {
+    console.error("Error starting watch party live:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+};
 
-  
-}
 
 export const endWatchPartyLive = async(req:Request, res:Response): Promise<void> => {
  
@@ -502,22 +540,25 @@ export const endWatchPartyLive = async(req:Request, res:Response): Promise<void>
   }
  
   const watchPartyId = parseInt(id);
- 
-  const watchParty = await prisma.watchParty.findUnique({
-    where: { id: watchPartyId },
-    include: { participants: true }
- 
-  })
- 
-  if (!watchParty) {
-    res.status(404).json({ message: "Watch Party not found." })
+
+  if (!activeStreams.has(watchPartyId)) {
+    res.status(400).json({ message: "No active streaming found for this watch party." });
     return;
   }
+ 
+  const streamInfo = activeStreams.get(watchPartyId);
+  if (streamInfo.process) {
+    streamInfo.process.kill('SIGTERM');
+  }
+  
+  // Clean up resources
+  cleanupStream(watchPartyId);
  
   const updatedWatchParty = await prisma.watchParty.update({
     where: { id: watchPartyId },
     data: {
-      isLive: false
+      isLive: false,
+      streamUrl:null
     }
   })
  
@@ -527,8 +568,7 @@ export const endWatchPartyLive = async(req:Request, res:Response): Promise<void>
   }
  
   res.status(200).json({
-   message: "Watchparty ended live successfully.",
-   watchParty: { ...updatedWatchParty, participants: watchParty.participants },
+   message: "Stream ended live successfully.",
  });
  
    

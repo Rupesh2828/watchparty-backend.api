@@ -15,6 +15,13 @@ export const generateAccessAndRefreshToken = async (userId: number) => {
       throw new Error('User not found');
     }
 
+    const accessTokenSecret = process.env.ACCESS_TOKEN_SECRET;
+    const refreshTokenSecret = process.env.REFRESH_TOKEN_SECRET;
+
+    if (!accessTokenSecret || !refreshTokenSecret) {
+      throw new Error("Missing JWT secrets in environment variables");
+    }
+
     // Generate Access and Refresh Tokens
     const accessToken = jwt.sign(
       { userId: user.id, email: user.email },
@@ -28,12 +35,7 @@ export const generateAccessAndRefreshToken = async (userId: number) => {
       { expiresIn: '15d' }
     );
 
-    // console.log("ACCESS_TOKEN_SECRET:", process.env.ACCESS_TOKEN_SECRET);
-    // console.log("REFRESH_TOKEN_SECRET:", process.env.REFRESH_TOKEN_SECRET);
 
-
-    // Optionally, you can store the refresh token in the database
-    user.refreshToken = refreshToken;
     await prisma.user.update({
       where: { id: userId },
       data: { refreshToken: refreshToken },
@@ -50,27 +52,18 @@ export const generateAccessAndRefreshToken = async (userId: number) => {
 export const createUser = async (req: Request, res: Response): Promise<void> => {
   try {
 
-    const authenticatedUser = req.context?.user;
-
-    // Optionally, you can check for the user in req.context to ensure authentication
-    if (!authenticatedUser) {
-      res.status(401).json({ error: 'Unauthorized. User is not authenticated.' });
-      return;
-    }
-
     const { username, email, password } = req.body;
     console.log("Username:", username);
 
 
     if (!email || !password || !username) {
       res.status(400).json({ error: 'Username,Email and password are required' });
-      
-
+      return;
     }
 
     // Check if the user already exists
     const existingUser = await prisma.user.findUnique({
-      where: { email: "" },
+      where: { email},
     });
 
     if (existingUser) {
@@ -111,8 +104,7 @@ export const loginUser = async (req: Request, res: Response): Promise<void> => {
 
   if (!email || !password) {
     res.status(400).json({ message: "Email and Password is required !!" })
-    
-
+    return
   }
 
   const existingUser = await prisma.user.findUnique({
@@ -140,8 +132,8 @@ export const loginUser = async (req: Request, res: Response): Promise<void> => {
 
     // Cookie options
     const cookieOptions = {
-      httpOnly: true, // Cookies cannot be accessed by JavaScript on the client
-      secure: process.env.NODE_ENV === "production", // Send cookies only over HTTPS in production
+      httpOnly: true, 
+      secure: process.env.NODE_ENV === "production", //secures in production
       sameSite: "strict" as const, // Helps prevent CSRF attacks
       maxAge: 24 * 60 * 60 * 1000, // 1 day
     };
@@ -153,7 +145,6 @@ export const loginUser = async (req: Request, res: Response): Promise<void> => {
     // Send the tokens in the response
     res.status(200).json({
       message: "Login successful",
-      existingUser
     });
 
   } catch (error) {
@@ -211,7 +202,7 @@ export const logoutUser = async (req: Request, res: Response): Promise<void> => 
 
 export const updateUser = async (req: Request, res: Response): Promise<void> => {
   try {
-    const userId = req.user?.id;
+    const userId = req.context?.user?.userId;
     const { username, email } = req.body;
 
     if (!userId) {
@@ -248,7 +239,7 @@ export const updateUser = async (req: Request, res: Response): Promise<void> => 
 
 export const deleteUser = async (req: Request, res: Response): Promise<void> => {
   try {
-    const userId = req.user?.id;
+    const userId = req.context?.user?.userId;
 
     if (!userId) {
       res.status(400).json({ message: "User ID is required to delete user." });
@@ -314,7 +305,7 @@ export const deleteUser = async (req: Request, res: Response): Promise<void> => 
 
 export const getUser = async (req: Request, res: Response): Promise<void> => {
   try {
-    const userId = req.user?.id;
+    const userId = req.context?.user?.userId;
 
     if (!userId) {
       res.status(400).json({ message: "User ID is required to get user." });
@@ -341,7 +332,7 @@ export const getUser = async (req: Request, res: Response): Promise<void> => {
 
 export const changePassword = async (req: Request, res: Response): Promise<void> => {
   try {
-    const userId = req.user?.id;
+    const userId = req.context?.user?.userId;
     const { oldPassword, newPassword } = req.body;
 
     if (!userId) {
