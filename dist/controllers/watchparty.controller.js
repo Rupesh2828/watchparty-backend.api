@@ -1,7 +1,11 @@
 import prisma from "../config/database.js";
 import { mkdirSync, existsSync } from 'fs';
-import { spawn } from 'child_process';
-import path from 'path';
+import { exec } from 'child_process';
+import ffmpeg from 'fluent-ffmpeg';
+if (!global.activeStreams) {
+    global.activeStreams = new Map();
+}
+const activeStreams = global.activeStreams;
 const STREAM_ROOT_DIR = process.env.STREAM_DIR || './streams';
 const HLS_SEGMENT_DURATION = 4; // in seconds
 // Ensure streams directory exists
@@ -37,12 +41,15 @@ export const createWatchParty = async (req, res) => {
             res.status(401).json({ message: "Watch Party already exists with the same title" });
             return;
         }
+        const streamKey = `${hostId}-${Date.now()}`;
+        const streamUrl = `rtmp://localhost/live/${streamKey}`;
         const watchpartyCreation = await prisma.watchParty.create({
             data: {
                 title,
                 description,
                 hostId,
                 videoUrl,
+                streamUrl,
                 startTime: startTime ? new Date(startTime) : null,
                 endTime: endTime ? new Date(endTime) : null,
             },
@@ -312,94 +319,130 @@ export const cleanupStream = async (watchPartyId) => {
         activeStreams.delete(watchPartyId);
     }
 };
-const activeStreams = new Map();
 export const startStreaming = async (req, res) => {
+    let responseHandled = false;
     try {
-        const { videoUrl } = req.body;
-        const { id } = req.params;
+        const { id } = req.params; // Watch party ID from URL
         if (!id || isNaN(Number(id))) {
             res.status(400).json({ message: "Valid Watch Party ID is required." });
             return;
         }
-        if (!videoUrl) {
-            res.status(400).json({ message: "Video URL is required" });
-            return;
-        }
-        //for valid url
-        if (!/^https?:\/\/.+\..+/.test(videoUrl)) {
-            res.status(400).json({ message: "Invalid Video URL format" });
-            return;
-        }
         const watchPartyId = parseInt(id);
+        // Find the watch party and get the RTMP URL
         const watchParty = await prisma.watchParty.findUnique({
             where: { id: watchPartyId },
-            include: { participants: true }
         });
         if (!watchParty) {
             res.status(404).json({ message: "Watch Party not found." });
             return;
         }
-        // Check if streaming is already active
-        if (activeStreams.has(watchPartyId)) {
-            res.status(400).json({ message: "Streaming is already active for this watch party" });
+        if (!watchParty.videoUrl) {
+            res.status(400).json({ message: "No video URL available for streaming." });
             return;
         }
-        // Create a subdirectory for each watch party
-        const streamDir = path.join(STREAM_ROOT_DIR, watchPartyId.toString());
-        if (!existsSync(streamDir)) {
-            mkdirSync(streamDir, { recursive: true });
+        if (!watchParty.streamUrl) {
+            res.status(400).json({ message: "No RTMP stream URL found." });
+            return;
         }
-        const outputPath = path.join(streamDir, 'stream.m3u8');
-        // Set up FFmpeg command for HLS streaming
-        const ffmpeg = spawn('ffmpeg', [
-            '-i', videoUrl,
-            '-c:v', 'libx264',
-            '-c:a', 'aac',
-            '-b:v', '1M',
-            '-b:a', '128k',
-            '-hls_time', HLS_SEGMENT_DURATION.toString(),
-            '-hls_list_size', '10',
-            '-hls_flags', 'delete_segments',
-            '-f', 'hls',
-            outputPath
-        ]);
-        // FFmpeg Process Logging & Handling
-        ffmpeg.stderr.on('data', (data) => {
-            console.log(`FFmpeg [${watchPartyId}]: ${data.toString()}`);
-        });
-        ffmpeg.on('error', (error) => {
-            console.error(`FFmpeg error [${watchPartyId}]:`, error);
-            cleanupStream(watchPartyId);
-            res.status(500).json({ message: "Streaming failed due to FFmpeg error" });
-        });
-        ffmpeg.on('exit', (code, signal) => {
-            console.log(`FFmpeg process exited with code ${code} and signal ${signal}`);
-            cleanupStream(watchPartyId);
-        });
-        // Store FFmpeg process reference
-        activeStreams.set(watchPartyId, {
-            process: ffmpeg,
-            outputPath,
-            streamDir
-        });
-        // Update watch party status
-        await prisma.watchParty.update({
-            where: { id: watchPartyId },
-            data: {
-                isLive: true,
-                streamUrl: `/streams/${watchPartyId}/stream.m3u8`
+        // Get RTMP URL from the database
+        const rtmpUrl = watchParty.streamUrl;
+        const videoUrl = watchParty.videoUrl;
+        if (videoUrl.includes('youtube.com') || videoUrl.includes('youtu.be')) {
+            console.log(`Extracting direct stream URL from YouTube: ${videoUrl}`);
+            exec(`C:\\Users\\Rupesh\\yt-dlp.exe -f "best[height<=720]" -g "${videoUrl}"`, (error, stdout, stderr) => {
+                if (error) {
+                    console.error(`Error extracting YouTube stream URL: ${error.message}`);
+                    updateWatchPartyStatus(watchPartyId, false);
+                    return;
+                }
+                if (stderr) {
+                    console.error(`yt-dlp stderr: ${stderr}`);
+                }
+                // Get the direct stream URL
+                const directStreamUrl = stdout.trim();
+                if (!directStreamUrl) {
+                    console.error("Failed to get direct stream URL");
+                    updateWatchPartyStatus(watchPartyId, false);
+                    return;
+                }
+                console.log(`Got direct stream URL (first 50 chars): ${directStreamUrl.substring(0, 50)}...`);
+                startFFmpegProcess(directStreamUrl, rtmpUrl, watchPartyId);
+            });
+        }
+        else {
+            console.log(`Starting direct streaming from: ${videoUrl}`);
+            startFFmpegProcess(videoUrl, rtmpUrl, watchPartyId);
+        }
+    }
+    catch (error) {
+        console.error("Error starting RTMP streaming:", error);
+        if (!responseHandled) {
+            res.status(500).json({ error: "Internal server error", details: error.message });
+        }
+        updateWatchPartyStatus(parseInt(req.params.id), false);
+    }
+    function startFFmpegProcess(inputUrl, outputUrl, watchPartyId) {
+        return new Promise((resolve, reject) => {
+            try {
+                const ffmpegCommand = ffmpeg(inputUrl)
+                    .inputOptions(['-re'])
+                    .outputOptions([
+                    '-c:v libx264',
+                    '-preset veryfast',
+                    '-maxrate 3000k',
+                    '-bufsize 6000k',
+                    '-pix_fmt yuv420p',
+                    '-g 50',
+                    '-c:a aac',
+                    '-b:a 128k',
+                    '-f flv',
+                ])
+                    .output(outputUrl);
+                const ffmpegProcess = ffmpegCommand
+                    .on('start', (commandLine) => {
+                    console.log(`FFmpeg started with command: ${commandLine}`);
+                    updateWatchPartyStatus(watchPartyId, true);
+                    global.activeStreams.set(watchPartyId, {
+                        process: ffmpegProcess,
+                        startTime: new Date(),
+                        inputUrl,
+                        outputUrl
+                    });
+                    resolve();
+                })
+                    .on('error', (err, stdout, stderr) => {
+                    console.error(`FFmpeg error: ${err.message}`);
+                    console.error(stderr);
+                    updateWatchPartyStatus(watchPartyId, false);
+                    global.activeStreams.delete(watchPartyId);
+                    reject(err);
+                })
+                    .on('end', () => {
+                    console.log(`FFmpeg ended for watchPartyId ${watchPartyId}`);
+                    updateWatchPartyStatus(watchPartyId, false);
+                    global.activeStreams.delete(watchPartyId);
+                });
+                ffmpegProcess.run();
+            }
+            catch (err) {
+                reject(err);
             }
         });
-        res.status(200).json({
-            message: "Streaming started successfully",
-            streamUrl: `/streams/${watchPartyId}/stream.m3u8`
+    }
+};
+// Helper function to update watch party status
+async function updateWatchPartyStatus(watchPartyId, isLive) {
+    try {
+        await prisma.watchParty.update({
+            where: { id: watchPartyId },
+            data: { isLive }
         });
     }
     catch (error) {
-        console.error("Error starting watch party live:", error);
-        res.status(500).json({ error: "Internal server error" });
+        console.error(`Error updating watch party status for ID ${watchPartyId}:`, error);
     }
-};
+}
+;
 export const endWatchPartyLive = async (req, res) => {
     try {
         const { id } = req.params;
@@ -408,6 +451,13 @@ export const endWatchPartyLive = async (req, res) => {
             return;
         }
         const watchPartyId = parseInt(id);
+        const watchParty = await prisma.watchParty.findUnique({
+            where: { id: watchPartyId },
+        });
+        if (!watchParty) {
+            res.status(404).json({ message: "Watch Party not found." });
+            return;
+        }
         if (!activeStreams.has(watchPartyId)) {
             res.status(400).json({ message: "No active streaming found for this watch party." });
             return;

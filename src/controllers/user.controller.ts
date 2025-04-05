@@ -156,7 +156,7 @@ export const loginUser = async (req: Request, res: Response): Promise<void> => {
 export const logoutUser = async (req: Request, res: Response): Promise<void> => {
   try {
 
-    const userId = req.context?.user || req.body.userId;
+    const userId = req.context?.user?.userId;
 
     if (!userId) {
       res.status(400).json({ message: "User ID is required to logout." });

@@ -24,17 +24,18 @@ import reactionRouter from "./routes/reaction.route.js";
 import playbacksyncRouter from "./routes/playbacksync.route.js";
 import mediaRouter from "./routes/media.route.js";
 import notificationRouter from "./routes/notification.route.js";
-// Serve HLS stream files with appropriate headers
 app.use('/streams', (req, res, next) => {
     const filePath = path.join(STREAM_ROOT_DIR, req.url);
-    // Set CORS headers for video streaming
-    res.header('Access-Control-Allow-Origin', '*');
-    // Set content types for HLS streaming
+    // CORS header for HLS
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    // Correct Content-Type headers
     if (req.url.endsWith('.m3u8')) {
         res.setHeader('Content-Type', 'application/vnd.apple.mpegurl');
+        res.setHeader('Cache-Control', 'no-cache');
     }
     else if (req.url.endsWith('.ts')) {
-        res.setHeader('Content-Type', 'video/MP2T');
+        res.setHeader('Content-Type', 'video/mp2t'); // ✅ lowercase
+        res.setHeader('Cache-Control', 'no-cache');
     }
     next();
 }, express.static(STREAM_ROOT_DIR));
