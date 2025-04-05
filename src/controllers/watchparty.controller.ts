@@ -1,7 +1,7 @@
 import prisma from "../config/database.js";
 import { Request, Response } from "express";
 import { createWriteStream, mkdirSync, existsSync } from 'fs';
-import { exec } from 'child_process';
+import { spawn } from 'child_process';
 import path from 'path';
 import ffmpeg from 'fluent-ffmpeg';
 
@@ -435,16 +435,15 @@ interface StreamInfo {
 export const startStreaming = async (req: Request, res: Response): Promise<void> => {
   let responseHandled = false;
   try {
-    const { id } = req.params; // Watch party ID from URL
+    const { id } = req.params; 
 
     if (!id || isNaN(Number(id))) {
       res.status(400).json({ message: "Valid Watch Party ID is required." });
       return;
     }
 
-    const watchPartyId = parseInt(id);
+     const watchPartyId = parseInt(id);
 
-    // Find the watch party and get the RTMP URL
     const watchParty = await prisma.watchParty.findUnique({
       where: { id: watchPartyId },
     });
@@ -464,25 +463,39 @@ export const startStreaming = async (req: Request, res: Response): Promise<void>
       return;
     }
 
-    // Get RTMP URL from the database
     const rtmpUrl = watchParty.streamUrl;
     const videoUrl = watchParty.videoUrl;
+
     if (videoUrl.includes('youtube.com') || videoUrl.includes('youtu.be')) {
       console.log(`Extracting direct stream URL from YouTube: ${videoUrl}`);
       
-      exec(`C:\\Users\\Rupesh\\yt-dlp.exe -f "best[height<=720]" -g "${videoUrl}"`, (error, stdout, stderr) => {
-        if (error) {
-          console.error(`Error extracting YouTube stream URL: ${error.message}`);
+      const ytDlp = spawn("C:\\Users\\Rupesh\\yt-dlp.exe", [
+        "-f", "bv[height<=1080]+ba", // separate best video + best audio
+        "-g",
+        videoUrl,
+      ]);
+      
+      
+      let output = "";
+      let errorOutput = "";
+      
+      ytDlp.stdout.on("data", (data) => {
+        output += data.toString();
+      });
+      
+      ytDlp.stderr.on("data", (data) => {
+        errorOutput += data.toString();
+      });
+      
+      ytDlp.on("close", (code) => {
+        if (code !== 0) {
+          console.error(`yt-dlp exited with code ${code}`);
+          console.error(errorOutput);
           updateWatchPartyStatus(watchPartyId, false);
           return;
         }
-        
-        if (stderr) {
-          console.error(`yt-dlp stderr: ${stderr}`);
-        }
-        
-        // Get the direct stream URL
-        const directStreamUrl = stdout.trim();
+      
+        const directStreamUrl = output.trim();
         
         if (!directStreamUrl) {
           console.error("Failed to get direct stream URL");
@@ -509,6 +522,7 @@ export const startStreaming = async (req: Request, res: Response): Promise<void>
   function startFFmpegProcess(inputUrl: string, outputUrl: string, watchPartyId: number): Promise<void> {
     return new Promise((resolve, reject) => {
       try {
+        //this transcodes and pushes the stream
         const ffmpegCommand = ffmpeg(inputUrl)
           .inputOptions(['-re'])
           .outputOptions([
