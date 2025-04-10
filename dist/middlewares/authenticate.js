@@ -14,7 +14,8 @@ export const authenticate = async (req, res, next) => {
             // Attach user to request (fixing context issue)
             req.context = req.context || {};
             req.context.user = decodedAccess;
-            console.log("Authenticated User:", decodedAccess);
+            const { userId, email } = decodedAccess;
+            console.log("Authenticated User:", userId, email);
             return next();
         }
         catch (accessError) {

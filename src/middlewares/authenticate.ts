@@ -23,7 +23,8 @@ export const authenticate = async (req: Request, res: Response, next: NextFuncti
       (req as any).context = (req as any).context || {};
       (req as any).context.user = decodedAccess;
 
-      console.log("Authenticated User:", decodedAccess);
+      const { userId, email } = decodedAccess
+      console.log("Authenticated User:", userId, email);
 
       return next();
     } catch (accessError) {
@@ -33,19 +34,19 @@ export const authenticate = async (req: Request, res: Response, next: NextFuncti
     // If token verification fails, check if refreshToken exists
     if (!refreshToken) {
       console.log("No Refresh Token Available.");
-       res.status(401).json({ message: "Invalid or expired tokens." });
-       return
+      res.status(401).json({ message: "Invalid or expired tokens." });
+      return
     }
 
     try {
       // Verify the refresh token (optional: you might refresh the token here)
       jwt.verify(refreshToken, process.env.REFRESH_TOKEN_SECRET!);
-       res.status(403).json({ message: "Access token expired. Please refresh." });
-       return
+      res.status(403).json({ message: "Access token expired. Please refresh." });
+      return
     } catch (refreshError) {
       console.error("Refresh Token Verification Failed:", refreshError.message);
-       res.status(403).json({ message: "Invalid refresh token." });
-       return;
+      res.status(403).json({ message: "Invalid refresh token." });
+      return;
     }
   } catch (error) {
     console.error("Authentication Error:", error.message);

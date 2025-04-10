@@ -93,6 +93,32 @@ export const getWatchPartyById = async (req, res) => {
         return;
     }
 };
+export const getAllWatchparty = async (req, res) => {
+    try {
+        const userId = req.context?.user?.userId;
+        if (!userId) {
+            res.status(401).json({ message: "Unauthorized" });
+            return;
+        }
+        const watchParties = await prisma.watchParty.findMany({
+            orderBy: {
+                createdAt: "desc",
+            },
+            include: {
+                host: true,
+                // Include participants if needed
+                // participants: true
+            },
+        });
+        res.status(200).json({ watchParties });
+        return;
+    }
+    catch (error) {
+        console.error("Error fetching all watch parties:", error);
+        res.status(500).json({ message: "Server error" });
+        return;
+    }
+};
 export const updateWatchpartyDetails = async (req, res) => {
     try {
         const { id } = req.params;
@@ -348,9 +374,8 @@ export const startStreaming = async (req, res) => {
         if (videoUrl.includes('youtube.com') || videoUrl.includes('youtu.be')) {
             console.log(`Extracting direct stream URL from YouTube: ${videoUrl}`);
             const ytDlp = spawn("C:\\Users\\Rupesh\\yt-dlp.exe", [
-                "-f", "bv[height<=1080]+ba", // separate best video + best audio
-                "-g",
-                videoUrl,
+                "-f", "best[height<=1080]",
+                "-g", videoUrl,
             ]);
             let output = "";
             let errorOutput = "";
